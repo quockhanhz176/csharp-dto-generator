@@ -2,12 +2,18 @@
 using System.Collections.Generic;
 using System.Text;
 
+// copy this to the other DtoClassGegnerator file after modification
 namespace DtoGenerator.Core;
 
 [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
-public sealed class DtoObjectAttribute(Type type) : Attribute
+public sealed class DtoClassAttribute : Attribute
 {
-    public Type Type { get; } = type;
+    public DtoClassAttribute(Type type)
+    {
+        Type = type;
+    }
+
+    public Type Type { get; }
 
     public string? ClassNamespace { get; set; }
 

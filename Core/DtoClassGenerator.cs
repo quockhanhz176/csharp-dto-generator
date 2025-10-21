@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Reflection;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using DtoGenerator.Utility;
@@ -12,27 +13,42 @@ using Microsoft.CodeAnalysis.Text;
 namespace DtoGenerator.Core;
 
 [Generator]
-class DtoObjectGenerator : IIncrementalGenerator
+class DtoClassGenerator : IIncrementalGenerator
 {
     private static readonly string NullablAttributeName =
         "System.Runtime.CompilerServices.NullableAttribute";
 
-    private static readonly string AttributeName = typeof(DtoObjectAttribute).FullName;
+    private static readonly string AttributeName = typeof(DtoClassAttribute).FullName;
 
-    //private static readonly string Extension = @"
-    //            namespace NetEscapades.EnumGenerators
-    //            {
-    //                [System.AttributeUsage(System.AttributeTargets.Enum)]
-    //                public class EnumExtensionsAttribute : System.Attribute
-    //                {
-    //                    public string ExtensionClassName { get; set; }
-    //                }
-    //            }";
+    //private static readonly string Extension =
+    //    @"
+    //    namespace DtoGenerator.Core;
+
+    //    [AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
+    //    public sealed class DtoClassAttribute(Type type) : Attribute
+    //    {
+    //        public Type Type { get; } = type;
+
+    //        public string? ClassNamespace { get; set; }
+
+    //        public string? ClassName { get; set; }
+
+    //        public bool IncludeNonPrimitives { get; set; } = false;
+
+    //        public string[]? ExcludedProperties { get; set; }
+
+    //        public bool MakePropertiesOptional { get; set; } = false;
+
+    //        public string[]? NonOptionalProperties { get; set; }
+
+    //        public bool CopyAttributes { get; set; } = true;
+    //    } ";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        //context.RegisterPostInitializationOutput(static ctx => ctx.AddSource(
-        //    "EnumExtensionsAttribute.g.cs", SourceText.From(Extension, Encoding.UTF8)));
+        //context.RegisterPostInitializationOutput(static ctx =>
+        //    ctx.AddSource("DtoClassAttribute.g.cs", SourceText.From(Extension, Encoding.UTF8))
+        //);
         var classSource = context
             .SyntaxProvider.ForAttributeWithMetadataName(
                 AttributeName,
@@ -45,6 +61,22 @@ class DtoObjectGenerator : IIncrementalGenerator
             classSource,
             static (context, classInfo) => AddFile(context, classInfo)
         );
+
+        context.RegisterPostInitializationOutput(static ctx =>
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+
+            using var stream = assembly.GetManifestResourceStream(
+                "DtoGenerator.Core.DtoClassAttribute.cs"
+            );
+            if (stream is null)
+                return;
+
+            using var reader = new StreamReader(stream);
+            var sourceText = reader.ReadToEnd();
+
+            ctx.AddSource("DtoClassAttribute.g.cs", SourceText.From(sourceText, Encoding.UTF8));
+        });
     }
 
     private static ClassInfo[] GetClassInfoList(
@@ -102,10 +134,10 @@ class DtoObjectGenerator : IIncrementalGenerator
 
         string? classNamespace =
             currentClass?.ContainingNamespace.ToDisplayString()
-            ?? GetArg<string?>(attribute, nameof(DtoObjectAttribute.ClassNamespace), null);
+            ?? GetArg<string?>(attribute, nameof(DtoClassAttribute.ClassNamespace), null);
         string className = GetArg(
             attribute,
-            nameof(DtoObjectAttribute.ClassName),
+            nameof(DtoClassAttribute.ClassName),
             currentClass?.Name ?? $"{targetClassName}Dto"
         );
         string classType =
@@ -114,23 +146,23 @@ class DtoObjectGenerator : IIncrementalGenerator
                 : "partial class";
         bool includeNonPrimitives = GetArg(
             attribute,
-            nameof(DtoObjectAttribute.IncludeNonPrimitives),
+            nameof(DtoClassAttribute.IncludeNonPrimitives),
             false
         );
         bool makePropertiesOptional = GetArg(
             attribute,
-            nameof(DtoObjectAttribute.MakePropertiesOptional),
+            nameof(DtoClassAttribute.MakePropertiesOptional),
             false
         );
-        bool copyAttributes = GetArg(attribute, nameof(DtoObjectAttribute.CopyAttributes), true);
+        bool copyAttributes = GetArg(attribute, nameof(DtoClassAttribute.CopyAttributes), true);
 
         var excludedPropertyNames = GetArrayArg<string>(
             attribute,
-            nameof(DtoObjectAttribute.ExcludedProperties)
+            nameof(DtoClassAttribute.ExcludedProperties)
         );
         var nonOptionalProperties = GetArrayArg<string>(
             attribute,
-            nameof(DtoObjectAttribute.NonOptionalProperties)
+            nameof(DtoClassAttribute.NonOptionalProperties)
         );
         List<IPropertySymbol> includedProperties = [];
         List<IPropertySymbol> excludedProperties = [];
@@ -266,8 +298,11 @@ class DtoObjectGenerator : IIncrementalGenerator
             toOldMethodBuilder.AppendLine(
                 $$"""
                         };
-                        {{(hasCustom ? "" : "// ")}}CustomToOriginal(returnValue);
-                        return returnValue;
+                        {{(
+                            hasCustom 
+                                ? "CustomToOriginal(returnValue);" 
+                                : "return returnValue;"
+                        )}}                        
                     }
                 """
             );
@@ -321,10 +356,11 @@ class DtoObjectGenerator : IIncrementalGenerator
             //{{className}}.CustomFromOriginal(returnValue, {{sourceParamName}});
             toNewExtensionClassBuilder.AppendLine(
                 $$"""
-                        {{(
-                    hasCustom ? "" : "// "
-                )}}returnValue.CustomFromOriginal({{sourceParamName}});
-                        return returnValue;
+                        {{( 
+                            hasCustom ? 
+                                "return Value.CustomFromOriginal({{sourceParamName}});" : 
+                                "return returnValue;" 
+                        )}}
                     }
                 }
                 """
