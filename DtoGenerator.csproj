@@ -7,6 +7,14 @@
     <ImplicitUsings>true</ImplicitUsings>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+    <Title>DTO Generator</Title>
+    <Authors>Khanh Le</Authors>
+    <PackageProjectUrl></PackageProjectUrl>
+    <RepositoryUrl>https://github.com/quockhanhz176/csharp-dto-generator</RepositoryUrl>
+    <PackageTags>DTO</PackageTags>
+    <PackageId>khanhle.$(AssemblyName)</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <VersionPrefix>1.0.1</VersionPrefix>
   </PropertyGroup>
   <ItemGroup>
     <!-- Embedded so it can be emitted -->
