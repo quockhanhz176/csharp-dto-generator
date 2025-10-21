@@ -1,6 +1,6 @@
 # C# DTO Generator
 
-**C# DTO Generator** # source generator that automatically produces Data Transfer Objects (DTOs) from annotated model classes using compile-time code generation. It leverages Roslyn’s incremental generator API to eliminate boilerplate.
+**C# DTO Generator** # source generator that automatically produces Data Transfer Objects (DTOs) from annotated model classes using compile-time code generation. It leverages Roslyn’s incremental generator API to minimize the need to write boilerplate code.
 
 ---
 
